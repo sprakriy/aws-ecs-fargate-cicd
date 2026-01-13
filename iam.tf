@@ -18,7 +18,7 @@ data "aws_iam_policy_document" "github_allow" {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
       # REPLACE 'your-username/your-repo' with your actual GitHub path
-      values   = ["repo:your-username/your-repo:*"]
+      values   = ["repo:sprakriy/aws-ecs-web-app:*"]
     }
     condition {
       test     = "StringEquals"
@@ -32,4 +32,30 @@ data "aws_iam_policy_document" "github_allow" {
 resource "aws_iam_role" "github_role" {
   name               = "github-actions-deploy-role"
   assume_role_policy = data.aws_iam_policy_document.github_allow.json
+}
+# Attach a policy to allow ECR and ECS actions
+resource "aws_iam_role_policy" "github_policy" {
+  name   = "github-deploy-permissions"
+  role   = aws_iam_role.github_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:PutImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload",
+          "ecs:UpdateService",
+          "ecs:DescribeServices",
+          "ecs:RegisterTaskDefinition",
+          "iam:PassRole" # Required to pass the execution role to the new task
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 }
