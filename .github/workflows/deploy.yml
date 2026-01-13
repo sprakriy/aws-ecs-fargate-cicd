@@ -13,7 +13,7 @@ env:
   ECR_REPOSITORY: my-fargate-app           
   ECS_SERVICE: app-service                 
   ECS_CLUSTER: app-cluster                 
-  CONTAINER_NAME: my-container             
+  CONTAINER_NAME: my-app             
 
 jobs:
   deploy:
