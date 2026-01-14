@@ -26,7 +26,7 @@ resource "aws_iam_role" "github_role" {
         Principal = { Federated = aws_iam_openid_connect_provider.github.arn }
         Condition = {
           StringLike = {
-            "token.actions.githubusercontent.com:sub": "repo:YOUR_GITHUB_USERNAME/YOUR_REPO_NAME:*"
+            "token.actions.githubusercontent.com:sub": "repo:sprakriy/aws-ecs-fargate-cicd:*"
           }
         }
       }
