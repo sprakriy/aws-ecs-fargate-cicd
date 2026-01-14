@@ -57,9 +57,35 @@ resource "aws_ecs_service" "main" {
     container_port   = 80
   }
   # ... other config ...
-  desired_count = 1 
+  #desired_count = 1 
 
   lifecycle {
     ignore_changes = [desired_count] # Let Auto Scaling manage the count after creation
   }
 }
+/*
+# 1. Define the Scalable Target
+resource "aws_appautoscaling_target" "ecs_target" {
+  max_capacity       = 5
+  min_capacity       = 1
+  resource_id        = "${aws_ecs_cluster.app_cluster.name}/${aws_ecs_service.main.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+# 2. Define the Scaling Policy
+resource "aws_appautoscaling_policy" "ecs_policy_cpu" {
+  name               = "cpu-autoscaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.ecs_target.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_target.service_namespace
+
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value = 50.0  # Keep average CPU at 50%
+  }
+}
+*/
