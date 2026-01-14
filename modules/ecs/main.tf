@@ -56,4 +56,10 @@ resource "aws_ecs_service" "main" {
     container_name   = "my-app"
     container_port   = 80
   }
+  # ... other config ...
+  desired_count = 1 
+
+  lifecycle {
+    ignore_changes = [desired_count] # Let Auto Scaling manage the count after creation
+  }
 }
