@@ -70,7 +70,7 @@ resource "aws_iam_role_policy" "iam_pass_role" {
     ]
   })
 }
-
+# Output the Role ARN for GitHub Actions
 output "role_arn" {
   value = aws_iam_role.github_role.arn
 }
