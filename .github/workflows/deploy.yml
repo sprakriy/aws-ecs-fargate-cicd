@@ -14,12 +14,13 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v5
         with:
           terraform_version: 1.7.0
           terraform_wrapper: false # This is likely the missing link
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: GitHubActionsSession
 
       - name: Terraform Init
         run: terraform init -upgrade
