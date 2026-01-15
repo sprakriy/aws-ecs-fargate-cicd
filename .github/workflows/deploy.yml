@@ -18,11 +18,20 @@ jobs:
         with:
           terraform_version: 1.7.0
           terraform_wrapper: false # This is likely the missing link
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
       - name: Terraform Init
         run: terraform init -upgrade
 
       - name: Terraform Plan
         run: terraform plan -out=main.tfplan
+#        env:
+#          # This maps the login output directly to the Terraform environment
+#          AWS_ACCESS_KEY_ID: ${{ steps.login.outputs.aws-access-key-id }}
+#          AWS_SECRET_ACCESS_KEY: ${{ steps.login.outputs.aws-secret-access-key }}
+#          AWS_SESSION_TOKEN: ${{ steps.login.outputs.aws-session-token }}
+#          AWS_REGION: us-east-1
 
       - name: Terraform Apply
         run: terraform apply -auto-approve main.tfplan
