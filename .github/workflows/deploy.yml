@@ -54,11 +54,4 @@ jobs:
       # STEP C: Now that an image DEFINITELY exists, run the full 21 resources
       - name: Terraform Apply (Full Stack)
         run: terraform apply -auto-approve
-name: "Terraform Destroy"
 
-on:
-  workflow_dispatch: # This makes it a "Manual Button" only
-    inputs:
-      confirm_destroy:
-        description: 'Type "DESTROY" to confirm'
-        required: true
