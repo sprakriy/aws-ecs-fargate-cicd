@@ -27,6 +27,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }} # We will set this in Step 3
           aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com  # Explicitly force the correct audience
 
       - name: Login to Amazon ECR
         id: login-ecr
