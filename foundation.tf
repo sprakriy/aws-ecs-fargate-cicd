@@ -26,6 +26,7 @@ resource "aws_iam_role" "github_role" {
         Principal = {
           Federated = aws_iam_openid_connect_provider.github.arn
         }
+        /*
         Condition = {
           StringEquals = {
             # This is the EXACT string your debug output gave us
@@ -33,6 +34,16 @@ resource "aws_iam_role" "github_role" {
             "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
           }
         }
+      */
+          Condition: {
+            StringEquals: {
+              "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+            },
+             StringLike: {
+               "token.actions.githubusercontent.com:sub": "repo:sprakriy/*:*"
+              }
+            }
+  
       }
     ]
   })
