@@ -1,64 +1,81 @@
-name: Deploy to Amazon ECS
-
+name: Intelligent AWS Bootstrap
 on:
   push:
     branches: [ "main" ]
 
-permissions:
-  id-token: write # Required for OIDC
-  contents: read  # Required for checkout
+jobs:
+  infrastructure-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
 
-env:
-  AWS_REGION: us-east-1                   
-  ECR_REPOSITORY: my-fargate-app           
-  ECS_SERVICE: app-service                 
-  ECS_CLUSTER: app-cluster-prod                 
-  CONTAINER_NAME: my-app            
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC Test)
+        id: aws-login
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Check ECR for Existing Image
+        id: check-ecr
+        run: |
+          # 1. Check if ECR Repo exists. If not, we need to run TF for ECR first.
+          REPO_EXISTS=$(aws ecr describe-repositories --repository-names app-repo 2>&1 || true)
+          
+          if [[ $REPO_EXISTS == *"RepositoryNotFoundException"* ]]; then
+            echo "setup_state=no_repo" >> $GITHUB_OUTPUT
+          else
+            # 2. Check if there is at least one image
+            IMAGE_COUNT=$(aws ecr list-images --repository-name app-repo --query 'imageIds' --output json | jq '. | length')
+            if [ "$IMAGE_COUNT" -eq "0" ]; then
+              echo "setup_state=repo_empty" >> $GITHUB_OUTPUT
+            else
+              echo "setup_state=ready" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      # STEP A: If no repo exists, run Terraform just for the ECR/Networking
+      - name: Terraform Apply (Initial Foundation)
+        if: steps.check-ecr.outputs.setup_state == 'no_repo'
+        run: terraform apply -auto-approve -target=aws_ecr_repository.app_repo
+
+      # STEP B: Build and Push Docker image (If repo was just created or is empty)
+      - name: Build & Push Docker Image
+        if: steps.check-ecr.outputs.setup_state != 'ready'
+        run: |
+          docker build -t ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/app-repo:latest .
+          docker push ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/app-repo:latest
+
+      # STEP C: Now that an image DEFINITELY exists, run the full 21 resources
+      - name: Terraform Apply (Full Stack)
+        run: terraform apply -auto-approve
+name: "Terraform Destroy"
+
+on:
+  workflow_dispatch: # This makes it a "Manual Button" only
+    inputs:
+      confirm_destroy:
+        description: 'Type "DESTROY" to confirm'
+        required: true
 
 jobs:
-  deploy:
+  destroy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Print OIDC Token
-        run: |
-                # This will show you the exact 'sub' and 'aud' claims GitHub is sending
-                echo "The repo is: $GITHUB_REPOSITORY"
-                echo "The ref is: $GITHUB_REF"
-      - name: Configure AWS credentials
+
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }} # We will set this in Step 3
-          aws-region: ${{ env.AWS_REGION }}
-          audience: sts.amazonaws.com  # Explicitly force the correct audience
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build, tag, and push image to Amazon ECR
-        id: build-image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }} # Uses the unique Commit ID as the tag
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
-
-      - name: Fill in the new image ID in the Amazon ECS task definition
-        id: task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: task-definition.json
-          container-name: ${{ env.CONTAINER_NAME }}
-          image: ${{ steps.build-image.outputs.image }}
-
-      - name: Deploy Amazon ECS task definition
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: ${{ env.ECS_SERVICE }}
-          cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
+      - name: Terraform Destroy
+        if: github.event.inputs.confirm_destroy == 'DESTROY'
+        run: terraform destroy -auto-approve
