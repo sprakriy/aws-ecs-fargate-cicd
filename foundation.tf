@@ -40,11 +40,35 @@ resource "aws_iam_role" "github_role" {
     ForcedUpdate = "v2"
   }
 }
-
+/*
 # 4. Permissions
 resource "aws_iam_role_policy_attachment" "ecr_policy" {
   role       = aws_iam_role.github_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+}
+*/
+# 1. Permission to manage ECS Tasks and Services
+resource "aws_iam_role_policy_attachment" "ecs_full_access" {
+  role       = aws_iam_role.github_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonECS_FullAccess"
+}
+
+# 2. Permission to pass roles to ECS (Crucial!)
+# ECS needs to "become" the Task Execution Role you created
+resource "aws_iam_role_policy" "iam_pass_role" {
+  name = "allow-iam-pass-role"
+  role = aws_iam_role.github_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
+        Resource = "*" # In a real job, you'd limit this to your Task Execution Role ARN
+      }
+    ]
+  })
 }
 
 output "role_arn" {
