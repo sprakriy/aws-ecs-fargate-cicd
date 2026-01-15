@@ -15,7 +15,7 @@ resource "aws_ecr_repository" "app_repo" {
 
 # 3. The "Job-Ready" Role
 resource "aws_iam_role" "github_role" {
-  name = "aws-fargate-deployer-role" # Renamed for clarity
+  name = "aws-fargate-deployer-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -27,17 +27,18 @@ resource "aws_iam_role" "github_role" {
           Federated = aws_iam_openid_connect_provider.github.arn
         }
         Condition = {
-          StringLike = {
-            # USE THE WILDCARD (*) - This is the "Circle Breaker"
-            "token.actions.githubusercontent.com:sub": "repo:sprakriy/aws-ecs-fargate-cicd:*"
-          }
           StringEquals = {
+            # This is the EXACT string your debug output gave us
+            "token.actions.githubusercontent.com:sub": "repo:sprakriy/aws-ecs-fargate-cicd:ref:refs/heads/main",
             "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
           }
         }
       }
     ]
   })
+  tags = {
+    ForcedUpdate = "v2"
+  }
 }
 
 # 4. Permissions
