@@ -72,7 +72,7 @@ jobs:
         run: |
           # 1. Check if ECR Repo exists. If not, we need to run TF for ECR first.
           REPO_EXISTS=$(aws ecr describe-repositories --repository-names app-repo 2>&1 || true)
-          
+          echo $REPO_EXISTS
           if [[ $REPO_EXISTS == *"RepositoryNotFoundException"* ]]; then
             echo "setup_state=no_repo" >> $GITHUB_OUTPUT
           else
