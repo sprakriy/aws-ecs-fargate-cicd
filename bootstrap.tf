@@ -1,0 +1,22 @@
+# 1. S3 Bucket for State
+resource "aws_s3_bucket" "terraform_state" {
+  bucket        = "my-fargate-tfstate-${data.aws_caller_identity.current.account_id}"
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_versioning" "enabled" {
+  bucket = aws_s3_bucket.terraform_state.id
+  versioning_configuration { status = "Enabled" }
+}
+
+# 2. DynamoDB for State Locking
+resource "aws_dynamodb_table" "terraform_locks" {
+  name         = "terraform-state-locking"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "LockID"
+  attribute {
+    name = "LockID" 
+    type = "S" 
+    }
+}
+data "aws_caller_identity" "current" {}
