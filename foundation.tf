@@ -137,3 +137,40 @@ resource "aws_iam_role_policy_attachment" "github_attach" {
 output "role_arn" {
   value = aws_iam_role.github_role.arn
 }
+# 1. Import the Bucket (We know this one is missing)
+import {
+  to = aws_s3_bucket.terraform_state
+  id = "my-fargate-tfstate-319310747432"
+}
+
+# 2. Import the Versioning (The one you just realized)
+import {
+  to = aws_s3_bucket_versioning.enabled
+  id = "my-fargate-tfstate-319310747432" # The ID for versioning is just the bucket name
+}
+
+# 3. Import the DynamoDB Table
+import {
+  to = aws_dynamodb_table.terraform_locks
+  id = "terraform-state-locking"
+}
+
+# 1. The "Box" (The Resource Block)
+resource "aws_s3_bucket_public_access_block" "terraform_state" {
+  bucket = aws_s3_bucket.terraform_state.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# 2. The "Instruction" (The Import Block)
+import {
+  to = aws_s3_bucket_public_access_block.terraform_state
+  id = "my-fargate-tfstate-319310747432" # Use your actual bucket name
+}
+import {
+  to = aws_iam_policy.github_actions_policy
+  id = "arn:aws:iam::319310747432:policy/GitHubActionsDeployPolicy"
+}
