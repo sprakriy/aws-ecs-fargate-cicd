@@ -82,6 +82,57 @@ resource "aws_iam_role_policy" "iam_pass_role" {
     ]
   })
 }
+resource "aws_iam_policy" "github_actions_policy" {
+  name        = "GitHubActionsDeployPolicy"
+  description = "Minimal policy for VPC, ECR, and ECS deployment"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        # 1. Network Setup (VPC, Subnets, TG, Listeners)
+        Effect   = "Allow"
+        Action   = [
+          "ec2:CreateVpc", "ec2:CreateSubnet", "ec2:CreateTags",
+          "ec2:Describe*", "ec2:CreateRouteTable", "ec2:CreateInternetGateway",
+          "ec2:AttachInternetGateway", "ec2:AuthorizeSecurityGroupIngress",
+          "elasticloadbalancing:*"
+        ]
+        Resource = "*"
+      },
+      {
+        # 2. ECR Access (Push and Pull)
+        Effect   = "Allow"
+        Action   = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:PutImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload"
+        ]
+        Resource = "*"
+      },
+      {
+        # 3. ECS Access
+        Effect   = "Allow"
+        Action   = [
+          "ecs:CreateCluster", "ecs:RegisterTaskDefinition",
+          "ecs:UpdateService", "ecs:CreateService",
+          "iam:PassRole" # Critical for ECS to "take" the execution role
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "github_attach" {
+  role       = aws_iam_role.github_role.name
+  policy_arn = aws_iam_policy.github_actions_policy.arn
+}
 # Output the Role ARN for GitHub Actions
 output "role_arn" {
   value = aws_iam_role.github_role.arn
