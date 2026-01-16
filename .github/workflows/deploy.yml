@@ -67,28 +67,50 @@ jobs:
         run: |
           echo "Reached ECR Check Step"
 
-      - name: Check ECR for Existing Image
+#      - name: Check ECR for Existing Image
+#        id: check-ecr
+#        run: |
+#          # 1. Check if ECR Repo exists. If not, we need to run TF for ECR first.
+#          REPO_EXISTS=$(aws ecr describe-repositories --repository-names app-repo 2>&1 || true)
+#          echo $REPO_EXISTS
+#          if [[ $REPO_EXISTS == *"RepositoryNotFoundException"* ]]; then
+#            echo "setup_state=no_repo" >> $GITHUB_OUTPUT
+#          else
+#            # 2. Check if there is at least one image
+#            IMAGE_COUNT=$(aws ecr list-images --repository-name app-repo --query 'imageIds' --output json | jq '. | length')
+#            if [ "$IMAGE_COUNT" -eq "0" ]; then
+#              echo "setup_state=repo_empty" >> $GITHUB_OUTPUT
+#            else
+#              echo "setup_state=ready" >> $GITHUB_OUTPUT
+#            fi
+#          fi
+
+      # STEP A: If no repo exists, run Terraform just for the ECR/Networking
+#      - name: Terraform Apply (Initial Foundation)
+#        if: steps.check-ecr.outputs.setup_state == 'no_repo'
+#        run: terraform apply -auto-approve -target=aws_ecr_repository.app_repo
+      - name: Check ECR Status
         id: check-ecr
         run: |
-          # 1. Check if ECR Repo exists. If not, we need to run TF for ECR first.
-          REPO_EXISTS=$(aws ecr describe-repositories --repository-names app-repo 2>&1 || true)
-          echo $REPO_EXISTS
-          if [[ $REPO_EXISTS == *"RepositoryNotFoundException"* ]]; then
-            echo "setup_state=no_repo" >> $GITHUB_OUTPUT
-          else
-            # 2. Check if there is at least one image
-            IMAGE_COUNT=$(aws ecr list-images --repository-name app-repo --query 'imageIds' --output json | jq '. | length')
+          # Use -q to be quiet and get the exit code directly
+          if aws ecr describe-repositories --repository-names app-repo > /dev/null 2>&1; then
+            # Repo exists, now check images
+            IMAGE_COUNT=$(aws ecr list-images --repository-name app-repo --query 'length(imageIds)' --output text)
             if [ "$IMAGE_COUNT" -eq "0" ]; then
               echo "setup_state=repo_empty" >> $GITHUB_OUTPUT
             else
               echo "setup_state=ready" >> $GITHUB_OUTPUT
             fi
+          else
+            # Repo truly does not exist
+            echo "setup_state=no_repo" >> $GITHUB_OUTPUT
           fi
 
-      # STEP A: If no repo exists, run Terraform just for the ECR/Networking
       - name: Terraform Apply (Initial Foundation)
-        if: steps.check-ecr.outputs.setup_state == 'no_repo'
-        run: terraform apply -auto-approve -target=aws_ecr_repository.app_repo
+        # Use brackets for safer evaluation in GH expressions
+        if: ${{ steps.check-ecr.outputs.setup_state == 'no_repo' }}
+        run: terraform apply -auto-approve
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
