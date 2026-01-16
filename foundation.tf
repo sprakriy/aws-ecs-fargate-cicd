@@ -61,7 +61,8 @@ resource "aws_iam_role_policy_attachment" "ecr_policy" {
 # 1. Permission to manage ECS Tasks and Services
 resource "aws_iam_role_policy_attachment" "ecs_full_access" {
   role       = aws_iam_role.github_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonECS_FullAccess"
+  #policy_arn = "arn:aws:iam::aws:policy/AmazonECS_FullAccess"
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
 # 2. Permission to pass roles to ECS (Crucial!)
