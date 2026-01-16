@@ -33,6 +33,15 @@ jobs:
 
       - name: Terraform Plan
         run: terraform plan -out=main.tfplan
+        continue-on-error: true # Continue even if plan finds no changes or errors
+      -name: Check if changes were planned
+       id: plan_check
+       run: |
+        if [ -s tfplan ];then # Check if plan file is non-empty
+          echo "changes_planned=true" >> $GITHUB_OUTPUT
+        else
+          echo "changes_planned=false" >> $GITHUB_OUTPUT
+        fi
 #        env:
 #          # This maps the login output directly to the Terraform environment
 #          AWS_ACCESS_KEY_ID: ${{ steps.login.outputs.aws-access-key-id }}
@@ -42,9 +51,11 @@ jobs:
       - name: Print this terraform step
         run: |
           echo "Reached Terraform Apply Step"
-
-      - name: Terraform Apply
+      - name: Terraform Apply (Only if changes exist)
+        if: steps.plan_check.outputs.changes_planned == 'true'
         run: terraform apply -auto-approve main.tfplan
+#      - name: Terraform Apply
+#        run: terraform apply -auto-approve main.tfplan
 
       - name: Configure AWS Credentials (OIDC Test)
         id: aws-login
@@ -52,7 +63,10 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
-
+      -name: Checking ECR for existing image
+        run: |
+          echo "Reached ECR Check Step"
+          
       - name: Check ECR for Existing Image
         id: check-ecr
         run: |
