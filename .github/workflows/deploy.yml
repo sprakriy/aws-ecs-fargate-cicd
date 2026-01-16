@@ -39,6 +39,9 @@ jobs:
 #           AWS_SECRET_ACCESS_KEY: ${{ steps.login.outputs.aws-secret-access-key }}
 #          AWS_SESSION_TOKEN: ${{ steps.login.outputs.aws-session-token }}
 #          AWS_REGION: us-east-1
+      - name: Print this terraform step
+        run: |
+          echo "Reached Terraform Apply Step"
 
       - name: Terraform Apply
         run: terraform apply -auto-approve main.tfplan
@@ -79,6 +82,9 @@ jobs:
         run: |
           docker build -t ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/app-repo:latest .
           docker push ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/app-repo:latest
+      - name: Print Docker step B is done
+        run: |
+          echo "Reached Docker B is done"
 
       # STEP C: Now that an image DEFINITELY exists, run the full 21 resources
       - name: Terraform Apply (Full Stack)
