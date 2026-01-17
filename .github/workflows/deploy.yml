@@ -71,13 +71,13 @@ jobs:
 #        id: check-ecr
 #        run: |
 #          # 1. Check if ECR Repo exists. If not, we need to run TF for ECR first.
-#          REPO_EXISTS=$(aws ecr describe-repositories --repository-names app-repo 2>&1 || true)
+#          REPO_EXISTS=$(aws ecr describe-repositories --repository-names my-fargate-app 2>&1 || true)
 #          echo $REPO_EXISTS
 #          if [[ $REPO_EXISTS == *"RepositoryNotFoundException"* ]]; then
 #            echo "setup_state=no_repo" >> $GITHUB_OUTPUT
 #          else
 #            # 2. Check if there is at least one image
-#            IMAGE_COUNT=$(aws ecr list-images --repository-name app-repo --query 'imageIds' --output json | jq '. | length')
+#            IMAGE_COUNT=$(aws ecr list-images --repository-name my-fargate-app --query 'imageIds' --output json | jq '. | length')
 #            if [ "$IMAGE_COUNT" -eq "0" ]; then
 #              echo "setup_state=repo_empty" >> $GITHUB_OUTPUT
 #            else
@@ -93,9 +93,9 @@ jobs:
         id: check-ecr
         run: |
           # Use -q to be quiet and get the exit code directly
-          if aws ecr describe-repositories --repository-names app-repo > /dev/null 2>&1; then
+          if aws ecr describe-repositories --repository-names my-fargate-app > /dev/null 2>&1; then
             # Repo exists, now check images
-            IMAGE_COUNT=$(aws ecr list-images --repository-name app-repo --query 'length(imageIds)' --output text)
+            IMAGE_COUNT=$(aws ecr list-images --repository-name my-fargate-app --query 'length(imageIds)' --output text)
             if [ "$IMAGE_COUNT" -eq "0" ]; then
               echo "setup_state=repo_empty" >> $GITHUB_OUTPUT
             else
@@ -119,13 +119,13 @@ jobs:
       - name: Build, tag, and push image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: app-repo
+          ECR_REPOSITORY: my-fargate-app
           IMAGE_TAG: latest
 #      - name: Build & Push Docker Image
         if: steps.check-ecr.outputs.setup_state != 'ready'
         run: |
-          docker build -t ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/app-repo:latest .
-          docker push ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/app-repo:latest
+          docker build -t ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/my-fargate-app:latest .
+          docker push ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/my-fargate-app:latest
 
       - name: Print Docker step B is done
         run: |
