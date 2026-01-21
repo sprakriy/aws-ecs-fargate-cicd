@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Start with the latest Ubuntu
 FROM ubuntu:24.04
 
@@ -17,3 +18,7 @@ WORKDIR /app
 
 # This keeps the container running so we can "bash" into it later
 CMD ["sleep", "infinity"]
+=======
+FROM nginx:alpine
+COPY index.html /usr/share/nginx/html/index.html
+>>>>>>> 196eec81c290e9476a05aedeb6ccb299677defac

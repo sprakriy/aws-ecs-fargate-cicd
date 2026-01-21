@@ -1,0 +1,137 @@
+name: Intelligent AWS Bootstrap
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  infrastructure-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Configure AWS Credentials (OIDC Test)
+#        id: aws-login
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.2
+          terraform_wrapper: false # This is likely the missing link
+          aws-region: us-east-1
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: GitHubActionsSession
+
+      - name: Terraform Init
+        run: terraform init -upgrade
+
+      - name: Terraform Plan
+        run: terraform plan -out=main.tfplan
+        continue-on-error: true # Continue even if plan finds no changes or errors
+      - name: Check if changes were planned
+        id: plan_check
+        run: |
+          if [ -s tfplan ];then # Check if plan file is non-empty
+            echo "changes_planned=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes_planned=false" >> $GITHUB_OUTPUT
+          fi
+#        env:
+#          # This maps the login output directly to the Terraform environment
+#          AWS_ACCESS_KEY_ID: ${{ steps.login.outputs.aws-access-key-id }}
+#           AWS_SECRET_ACCESS_KEY: ${{ steps.login.outputs.aws-secret-access-key }}
+#          AWS_SESSION_TOKEN: ${{ steps.login.outputs.aws-session-token }}
+#          AWS_REGION: us-east-1
+      - name: Print this terraform step
+        run: |
+          echo "Reached Terraform Apply Step"
+      - name: Terraform Apply (Only if changes exist)
+        if: steps.plan_check.outputs.changes_planned == 'true'
+        run: terraform apply -auto-approve main.tfplan
+#      - name: Terraform Apply
+#        run: terraform apply -auto-approve main.tfplan
+
+      - name: Configure AWS Credentials (OIDC Test)
+        id: aws-login
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Checking ECR for existing image
+        run: |
+          echo "Reached ECR Check Step"
+
+#      - name: Check ECR for Existing Image
+#        id: check-ecr
+#        run: |
+#          # 1. Check if ECR Repo exists. If not, we need to run TF for ECR first.
+#          REPO_EXISTS=$(aws ecr describe-repositories --repository-names my-fargate-app 2>&1 || true)
+#          echo $REPO_EXISTS
+#          if [[ $REPO_EXISTS == *"RepositoryNotFoundException"* ]]; then
+#            echo "setup_state=no_repo" >> $GITHUB_OUTPUT
+#          else
+#            # 2. Check if there is at least one image
+#            IMAGE_COUNT=$(aws ecr list-images --repository-name my-fargate-app --query 'imageIds' --output json | jq '. | length')
+#            if [ "$IMAGE_COUNT" -eq "0" ]; then
+#              echo "setup_state=repo_empty" >> $GITHUB_OUTPUT
+#            else
+#              echo "setup_state=ready" >> $GITHUB_OUTPUT
+#            fi
+#          fi
+
+      # STEP A: If no repo exists, run Terraform just for the ECR/Networking
+#      - name: Terraform Apply (Initial Foundation)
+#        if: steps.check-ecr.outputs.setup_state == 'no_repo'
+#        run: terraform apply -auto-approve -target=aws_ecr_repository.app_repo
+      - name: Check ECR Status
+        id: check-ecr
+        run: |
+          # Use -q to be quiet and get the exit code directly
+          if aws ecr describe-repositories --repository-names my-fargate-app > /dev/null 2>&1; then
+            # Repo exists, now check images
+            IMAGE_COUNT=$(aws ecr list-images --repository-name my-fargate-app --query 'length(imageIds)' --output text)
+            if [ "$IMAGE_COUNT" -eq "0" ]; then
+              echo "setup_state=repo_empty" >> $GITHUB_OUTPUT
+            else
+              echo "setup_state=ready" >> $GITHUB_OUTPUT
+            fi
+          else
+            # Repo truly does not exist
+            echo "setup_state=no_repo" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Terraform Apply (Initial Foundation)
+        # Use brackets for safer evaluation in GH expressions
+        if: ${{ steps.check-ecr.outputs.setup_state == 'no_repo' }}
+        run: terraform apply -auto-approve
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      # STEP B: Build and Push Docker image (If repo was just created or is empty)
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: my-fargate-app
+          IMAGE_TAG: latest
+#      - name: Build & Push Docker Image
+        if: steps.check-ecr.outputs.setup_state != 'ready'
+        run: |
+          docker build -t ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/my-fargate-app:latest .
+          docker push ${{ steps.aws-login.outputs.aws-account-id }}.dkr.ecr.us-east-1.amazonaws.com/my-fargate-app:latest
+
+      - name: Print Docker step B is done
+        run: |
+          echo "Reached STEP C"
+
+      # STEP C: Now that an image DEFINITELY exists, run the full 21 resources
+      - name: Terraform Apply (Full Stack)
+        run: terraform apply -auto-approve
+
