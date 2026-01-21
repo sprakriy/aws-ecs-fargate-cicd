@@ -39,8 +39,16 @@ resource "aws_iam_role" "github_role" {
             StringEquals: {
               "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
             },
+            /*
              StringLike: {
                "token.actions.githubusercontent.com:sub": "repo:sprakriy/*:*"
+              }
+              */
+              StringLike: {
+                "token.actions.githubusercontent.com:sub": [
+                    "repo:sprakriy/my-devops-showcase:*",
+                    "repo:sprakriy/aws-ecs-fargate-cicd:*"
+                ]             
               }
             }
   
