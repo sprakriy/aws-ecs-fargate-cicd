@@ -27,7 +27,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.7.0
+          terraform_version: ">=1.10.5"
           terraform_wrapper: false # This is likely the missing link
           aws-region: us-east-1
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
