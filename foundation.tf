@@ -13,6 +13,10 @@ resource "aws_iam_openid_connect_provider" "github" {
 #  name         = "my-fargate-app"
 #  force_delete = true
 #}
+# Fetch the existing OIDC provider using its URL
+data "aws_iam_openid_connect_provider" "example" {
+  url = "https://token.actions.githubusercontent.com" # Replace with your OIDC provider URL (e.g., app.terraform.io, accounts.google.com, or your EKS cluster OIDC issuer URL)
+}
 
 # 3. The "Job-Ready" Role
 resource "aws_iam_role" "github_role" {
@@ -25,7 +29,7 @@ resource "aws_iam_role" "github_role" {
         Action = "sts:AssumeRoleWithWebIdentity",
         Effect = "Allow",
         Principal = {
-          Federated = aws_iam_openid_connect_provider.github.arn
+          Federated = data.aws_iam_openid_connect_provider.example.arn
         }
         /*
         Condition = {
