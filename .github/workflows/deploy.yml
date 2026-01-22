@@ -34,8 +34,31 @@ jobs:
         run: terraform init -upgrade
 
       - name: Terraform Plan
-        run: terraform plan -out=main.tfplan
-        continue-on-error: true # Continue even if plan finds no changes or errors
+        id: plan
+        run: |
+          # Generate the plan
+          terraform plan -no-color -out=main.tfplan
+          
+          # Create a header in the summary
+          echo "## 📝 Terraform Plan Result" >> $GITHUB_STEP_SUMMARY
+          echo "### Account: 319310747432" >> $GITHUB_STEP_SUMMARY
+          
+          # Add the plan summary (the last few lines showing add/change/destroy)
+          echo '```terraform' >> $GITHUB_STEP_SUMMARY
+          terraform show -no-color main.tfplan | tail -n 10 >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+      - name: Guardrail - Prevent Unintended Deletions
+        run: |
+          # Look for "destroy" in the plan summary
+          if terraform show -no-color main.tfplan | grep -E "plan:.*[1-9]+ to destroy"; then
+            echo "❌ ERROR: A destruction was detected in the plan. Stopping workflow for safety!"
+            exit 1
+          fi
+      - name: Terraform Apply
+        if: success()
+        run: terraform apply -auto-approve main.tfplan
+        #        run: terraform plan -out=main.tfplan
+#        continue-on-error: true # Continue even if plan finds no changes or errors
       - name: Check if changes were planned
         id: plan_check
         run: |
@@ -55,9 +78,9 @@ jobs:
           echo "Reached Terraform Apply Step"
       - name: Terraform Apply (Only if changes exist)
         if: steps.plan_check.outputs.changes_planned == 'true'
-        run: terraform apply -auto-approve main.tfplan
+        run: terraform apply main.tfplan
 #      - name: Terraform Apply
-#        run: terraform apply -auto-approve main.tfplan
+#        run: terraform apply main.tfplan
 
       - name: Configure AWS Credentials (OIDC Test)
         id: aws-login
@@ -90,7 +113,7 @@ jobs:
       # STEP A: If no repo exists, run Terraform just for the ECR/Networking
 #      - name: Terraform Apply (Initial Foundation)
 #        if: steps.check-ecr.outputs.setup_state == 'no_repo'
-#        run: terraform apply -auto-approve -target=aws_ecr_repository.app_repo
+#        run: terraform apply -target=aws_ecr_repository.app_repo
       - name: Check ECR Status
         id: check-ecr
         run: |
@@ -108,10 +131,11 @@ jobs:
             echo "setup_state=no_repo" >> $GITHUB_OUTPUT
           fi
 
+
       - name: Terraform Apply (Initial Foundation)
         # Use brackets for safer evaluation in GH expressions
         if: ${{ steps.check-ecr.outputs.setup_state == 'no_repo' }}
-        run: terraform apply -auto-approve
+        run: terraform apply
 
       - name: Login to Amazon ECR
         id: login-ecr
