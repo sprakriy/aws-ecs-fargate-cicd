@@ -9,6 +9,7 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 */
 # 1. Define who can assume this role (The Trust Policy)
+/*
 data "aws_iam_policy_document" "github_allow" {
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
@@ -29,7 +30,7 @@ data "aws_iam_policy_document" "github_allow" {
     }
   }
 }
-
+*/
 /*
 # 2. Create the Role
 resource "aws_iam_role" "github_role" {
