@@ -14,7 +14,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
       - name: Configure AWS Credentials (OIDC Test)
-#        id: aws-login
+      - run: |
+          echo "Using ARN prefix: ${ROLE_ARN:0:15}"
+          env:
+          ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
