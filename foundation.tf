@@ -1,4 +1,5 @@
-# 1. The Provider (Simplified for 2026)
+# 1. The Provider (Simplified for 2026) already created as pre-requisite
+/*
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
@@ -6,7 +7,7 @@ resource "aws_iam_openid_connect_provider" "github" {
   # We leave this empty or use a dummy to satisfy Terraform if needed.
   thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"] 
 }
-
+*/
 # 2. The Repository
 #resource "aws_ecr_repository" "app_repo" {
 #  name         = "my-fargate-app"
