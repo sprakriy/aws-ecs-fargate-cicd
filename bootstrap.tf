@@ -6,6 +6,7 @@ resource "aws_s3_bucket_versioning" "enabled" {
 }
 */
 # 2. DynamoDB for State Locking
+/*
 resource "aws_dynamodb_table" "terraform_locks" {
   name         = "terraform-state-locking"
   billing_mode = "PAY_PER_REQUEST"
@@ -14,5 +15,5 @@ resource "aws_dynamodb_table" "terraform_locks" {
     name = "LockID" 
     type = "S" 
     }
-}
+} */
 data "aws_caller_identity" "current" {}
