@@ -1,5 +1,5 @@
 # 1. The Provider (Simplified for 2026) already created as pre-requisite
-
+/*
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
@@ -7,16 +7,18 @@ resource "aws_iam_openid_connect_provider" "github" {
   # We leave this empty or use a dummy to satisfy Terraform if needed.
   thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"] 
 }
-
+*/
 # 2. The Repository
 #resource "aws_ecr_repository" "app_repo" {
 #  name         = "my-fargate-app"
 #  force_delete = true
 #}
 # Fetch the existing OIDC provider using its URL
+
 data "aws_iam_openid_connect_provider" "example" {
   url = "https://token.actions.githubusercontent.com" # Replace with your OIDC provider URL (e.g., app.terraform.io, accounts.google.com, or your EKS cluster OIDC issuer URL)
 }
+
 
 # 3. The "Job-Ready" Role
 resource "aws_iam_role" "github_role" {
