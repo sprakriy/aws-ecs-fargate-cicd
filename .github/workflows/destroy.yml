@@ -35,6 +35,11 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
+      - name: Remove OIDC and Role from Terraform State
+        run: |
+          terraform state rm aws_iam_openid_connect_provider.github
+          terraform state rm aws_iam_role.github_role
+        continue-on-error: true
 
       - name: Conditional Destroy
         if: github.event.inputs.confirmation == 'DESTROY'
