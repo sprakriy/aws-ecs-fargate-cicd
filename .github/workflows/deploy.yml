@@ -2,7 +2,12 @@ name: Intelligent AWS Bootstrap
 on:
   push:
     branches: [ "main" ]
-
+  workflow_dispatch:
+    inputs:
+      name:
+        descripton: 'I would like to see how it works'
+        required: false
+        default: 'Manual trigger'
 jobs:
   infrastructure-and-deploy:
     runs-on: ubuntu-latest
