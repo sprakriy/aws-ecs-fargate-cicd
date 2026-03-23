@@ -163,4 +163,17 @@ jobs:
       # STEP C: Now that an image DEFINITELY exists, run the full 21 resources
       - name: Terraform Apply (Full Stack)
         run: terraform apply -auto-approve
+      - name: Save State on Failure
+        if: failure() # Only triggers if a previous step (like Apply) fails
+        run: |
+          # Pull the current in-memory state from the runner's disk 
+          # and save it as a local file.
+          terraform state pull > failed_state.tfstate
+      - name: Upload State Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-failed-state
+          path: failed_state.tfstate
+          retention-days: 5 # Keeps it for 5 days so you can debug
 
