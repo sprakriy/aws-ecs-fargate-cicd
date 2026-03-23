@@ -1,8 +1,6 @@
 name: Intelligent AWS Bootstrap
 on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
+ workflow_dispatch:
     inputs:
       name:
         descripton: 'I would like to see how it works'
