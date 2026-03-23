@@ -20,11 +20,11 @@ jobs:
         uses: actions/checkout@v4
       - name: Checking AWS_ROLE_ARN secret
         run: |
-          echo "AWS_ROLE_ARN is set to ${{ secrets.AWS_ROLE_ARN }}"
+          echo "AWS_ROLE_ARN is set to arn:aws:iam::319310747432:role/GitHubActionsServiceRole"
       - name: Configure AWS Credentials (OIDC Test)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: arn:aws:iam::319310747432:role/GitHubActionsServiceRole
           aws-region: us-east-1
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
