@@ -41,12 +41,24 @@ jobs:
           terraform state rm aws_iam_role.github_role
         continue-on-error: true
         
-      - name: Conditional Destroy
+      - name: Verify Teardown Plan (Circuit Breaker)
         if: github.event.inputs.confirmation == 'DESTROY'
-        run: terraform destroy -auto-approve
-
-      - name: Security Alert
-        if: github.event.inputs.confirmation != 'DESTROY'
         run: |
-          echo "::error::Destroy cancelled. Confirmation string did not match 'DESTROY'."
-          exit 1
+          # Generate the plan and save it to a temporary file
+          terraform plan -destroy -out=destroy.tfplan
+          
+          # Convert the binary plan to readable text
+          terraform show -no-color destroy.tfplan > plan.txt
+          
+          # SEARCH: If the OIDC role appears in the "to be destroyed" list, FAIL THE JOB.
+          if grep -q "aws_iam_role.github_role" plan.txt; then
+            echo "::error::SAFETY ALERT: The OIDC Role is still in the destroy plan! Stopping to prevent lockout."
+            exit 1
+          else
+            echo "Safety check passed: OIDC Role is not in the plan."
+          fi
+
+      - name: Conditional Destroy
+        # This will ONLY run if the step above exited with 0 (success)
+        if: github.event.inputs.confirmation == 'DESTROY'
+        run: terraform destroy -auto-approve -lock-timeout=3m
