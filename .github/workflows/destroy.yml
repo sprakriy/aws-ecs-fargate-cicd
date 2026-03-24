@@ -21,7 +21,7 @@ jobs:
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: arn:aws:iam::319310747432:role/GitHubActionsServiceRole
           aws-region: us-east-1
           
       - name: Setup Terraform
@@ -30,16 +30,18 @@ jobs:
           terraform_version: ">=1.10.5"
           terraform_wrapper: false # This is likely the missing link
           aws-region: us-east-1
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: arn:aws:iam::319310747432:role/GitHubActionsServiceRole
           role-session-name: GitHubActionsSession
 
       - name: Terraform Init
         run: terraform init
       - name: Remove OIDC and Role from Terraform State
         run: |
-          terraform state rm aws_iam_openid_connect_provider.github
-          terraform state rm aws_iam_role.github_role
-          terraform state rm aws_iam_role_policy_attachment.github_policy_attach || true
+          terraform state rm aws_iam_role.github_role || true
+          terraform state rm aws_iam_role_policy_attachment.ecs_full_access || true
+          terraform state rm aws_iam_policy.github_actions_policy || true
+          terraform state rm aws_iam_role_policy_attachment.github_attach || true
+          terraform state rm aws_iam_role_policy.iam_pass_role || true
         continue-on-error: true
         
       - name: Verify Teardown Plan (Circuit Breaker)
